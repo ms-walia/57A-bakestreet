@@ -1326,6 +1326,32 @@ html.is-phone #zones { overflow: clip; }
 }
 }
 </style>
+<!-- reviews: auto-scrolling card strip. Real reviews go in REVIEWS (scene script at the bottom); the section shows from the 4th review. -->
+<style data-8b-part="section:reviews">
+@layer sections {
+#reviews { background: var(--color-4); padding: clamp(70px, 11svh, 130px) 0; overflow: clip; }
+#reviews[hidden] { display: none; }
+#reviews .rv-head { display: grid; gap: 14px; margin-bottom: clamp(28px, 5svh, 56px); padding-inline: var(--space-2); }
+#reviews .rv-note { color: var(--color-5); border: 1px dashed currentColor; border-radius: 999px; padding: 6px 14px; width: fit-content; }
+#reviews .rv-wrap { position: relative; }
+#reviews .rv-marquee { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+#reviews .rv-marquee::-webkit-scrollbar { display: none; }
+#reviews .rv-track { display: flex; gap: 20px; width: max-content; padding: 6px 20px 14px; }
+#reviews .rv-arrow { position: absolute; top: 50%; translate: 0 -50%; z-index: 3; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgb(255 250 240 / .35); background: rgb(18 13 5 / .55); color: rgb(255 250 240 / .7); cursor: pointer; backdrop-filter: blur(4px); transition: background .2s, color .2s, opacity .2s; opacity: .75; }
+#reviews .rv-arrow:hover, #reviews .rv-arrow:focus-visible { background: rgb(18 13 5 / .85); color: #fffaf0; opacity: 1; }
+#reviews .rv-arrow svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#reviews .rv-arrow--prev { left: clamp(8px, 2vw, 28px); } #reviews .rv-arrow--next { right: clamp(8px, 2vw, 28px); }
+@media (max-width: 600px) { #reviews .rv-arrow { width: 36px; height: 36px; } }
+#reviews .rv-card { flex: none; width: clamp(270px, 28vw, 360px); display: grid; gap: 14px; align-content: start; padding: 22px; border-radius: 18px; background: var(--color-3); color: var(--color-1); box-shadow: 0 10px 30px rgb(0 0 0 / .4); text-shadow: none; }
+#reviews .rv-stars { color: var(--color-6); letter-spacing: .12em; font-size: 18px; line-height: 1; }
+#reviews .rv-text { font-size: 16px; line-height: 1.5; color: var(--color-1); }
+#reviews .rv-who { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+#reviews .rv-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: linear-gradient(135deg, var(--color-5), var(--color-6)); color: var(--color-4); flex: none; }
+#reviews .rv-name { font-weight: 600; color: var(--color-1); line-height: 1.2; }
+#reviews .rv-place { font-size: 13px; color: color-mix(in srgb, var(--color-1) 65%, transparent); }
+@media (prefers-reduced-motion: reduce) { #reviews .rv-marquee { -webkit-mask-image: none; mask-image: none; } }
+}
+</style>
 <!-- tickets (hamper sizes) merged into #hampers above -->
 <style data-8b-part="section:faq">
 @layer sections {
@@ -1774,6 +1800,20 @@ html.is-phone #zones { overflow: clip; }
     <li class="mo-cell mo-cell--wide"><figure class="mo-photo"><img style="background:var(--color-4)" src="images/ig-gift-jars.jpg" alt="A jarred-dessert gifting crate from 57A Bakestreet's Instagram" width="1600" height="1600" loading="lazy"></figure></li>
   </ul>
   <p class="wrap m-text-4" style="padding-top:28px">Photos from her Instagram, shared here as a preview</p>
+</section>
+<!-- reviews: auto-scrolling card strip. Real reviews go in REVIEWS (scene script at the bottom); the section shows from the 4th review. -->
+<section id="reviews" class="slide" data-8b-section="reviews" aria-labelledby="reviews-title" hidden>
+  <div class="rv-head wrap">
+    <h2 class="m-text-3" id="reviews-title" data-8b-motion="heat">What customers say</h2>
+    <p class="rv-note m-text-4" id="rv-note" hidden>Sample reviews. Placeholder text for the layout, replaced by real customer reviews at launch.</p>
+  </div>
+  <div class="rv-wrap">
+    <button class="rv-arrow rv-arrow--prev" type="button" aria-label="Previous reviews"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="rv-marquee" id="rv-marquee" tabindex="0" aria-label="Customer reviews. Scrolls on its own; swipe or use the arrows to move.">
+      <ul class="rv-track" id="rv-track"></ul>
+    </div>
+    <button class="rv-arrow rv-arrow--next" type="button" aria-label="Next reviews"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
 </section>
 <!-- tickets (hamper sizes) merged into #hampers above -->
 <!-- faq: questions and answers (native <details>) -->
@@ -2343,6 +2383,77 @@ queueMotion(() => {
     });
   });
 });
+</script>
+<script data-8b-part="scene:reviews">
+/* Reviews strip. At launch: add real reviews to REVIEWS as { name, place, stars, text } and set SHOW_SAMPLES to false.
+   The section stays hidden until there are at least MIN_REVIEWS real reviews. */
+(function () {
+  const REVIEWS = [];
+  const MIN_REVIEWS = 4;
+  const SHOW_SAMPLES = true;
+  const SAMPLES = [
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'Ordered a custom cake for my mum’s birthday and it was gone in a day. Looked exactly like the reference photo.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'The desi ghee cookies taste just like homemade. Ordered twice already, both times fresh and on time.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'Got a gifting hamper for a colleague’s farewell, everyone asked where it was from. Beautifully packed.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 4, text: 'Chocolate fudge box was rich and not overly sweet. Would’ve liked a bigger box but the quality is there.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'Bulk cookie order for an office event came through perfectly, every box identical and on schedule.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'Red velvet cake was moist and not too sweet. Delivery was punctual, exactly as confirmed.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 5, text: 'Loved the jar dessert hamper, perfect size for a small gift and tasted great.' },
+    { name: 'Customer name', place: 'Amritsar', stars: 4, text: 'Good communication throughout, confirmed my order date right away and kept to it.' }
+  ];
+  const section = document.getElementById('reviews');
+  const track = document.getElementById('rv-track');
+  if (!section || !track) return;
+  const real = REVIEWS.length >= MIN_REVIEWS;
+  const list = real ? REVIEWS : (SHOW_SAMPLES ? SAMPLES : []);
+  if (!list.length) return;
+  const card = r => {
+    const li = document.createElement('li'); li.className = 'rv-card';
+    const stars = document.createElement('div'); stars.className = 'rv-stars'; stars.setAttribute('aria-label', r.stars + ' out of 5 stars');
+    stars.textContent = '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars);
+    const p = document.createElement('p'); p.className = 'rv-text'; p.textContent = '“' + r.text + '”';
+    const who = document.createElement('div'); who.className = 'rv-who';
+    const av = document.createElement('span'); av.className = 'rv-av'; av.textContent = (r.name.trim()[0] || 'A').toUpperCase();
+    const meta = document.createElement('div');
+    const n = document.createElement('div'); n.className = 'rv-name'; n.textContent = r.name;
+    const pl = document.createElement('div'); pl.className = 'rv-place'; pl.textContent = r.place;
+    meta.append(n, pl); who.append(av, meta); li.append(stars, p, who); return li;
+  };
+  const build = items => { track.replaceChildren(); [0, 1].forEach(copy => items.forEach(r => { const c = card(r); if (copy) c.setAttribute('aria-hidden', 'true'); track.appendChild(c); })); };
+  build(list);
+  document.getElementById('rv-note').hidden = real;
+  section.hidden = false;
+  /* auto-scroll that yields to the visitor: hover, touch, swipe, wheel and the arrows all pause it, and it resumes a moment later */
+  const sc = document.getElementById('rv-marquee');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let pos = 0, last = 0, hold = 0, hover = false, down = false;
+  const half = () => track.scrollWidth / 2;
+  const touch = ms => { hold = performance.now() + (ms || 2500); };
+  const wrap = () => { const h = half(); if (sc.scrollLeft >= h) { sc.scrollLeft -= h; pos = sc.scrollLeft; } else if (sc.scrollLeft <= 0 && h) { sc.scrollLeft += h; pos = sc.scrollLeft; } };
+  sc.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') hover = true; });
+  sc.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hover = false; touch(1200); } });
+  sc.addEventListener('pointerdown', () => { down = true; touch(); });
+  addEventListener('pointerup', () => { if (down) { down = false; touch(); } });
+  sc.addEventListener('touchstart', () => { down = true; touch(); }, { passive: true });
+  sc.addEventListener('touchend', () => { down = false; touch(); }, { passive: true });
+  sc.addEventListener('wheel', () => touch(), { passive: true });
+  sc.addEventListener('focusin', () => touch(4000));
+  sc.addEventListener('scroll', () => { if (down || performance.now() < hold) { pos = sc.scrollLeft; wrap(); } }, { passive: true });
+  const step = dir => { touch(4000); const w = track.firstElementChild ? track.firstElementChild.getBoundingClientRect().width + 20 : 300; sc.scrollBy({ left: dir * w, behavior: 'smooth' }); };
+  section.querySelector('.rv-arrow--prev').addEventListener('click', () => step(-1));
+  section.querySelector('.rv-arrow--next').addEventListener('click', () => step(1));
+  sc.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { step(1); e.preventDefault(); } if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); } });
+  let visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: 0 }).observe(section);
+  const tick = t => {
+    const dt = Math.min(48, t - (last || t)); last = t;
+    if (!reduce && visible && !hover && !down && t > hold) {
+      pos += dt * 0.045; sc.scrollLeft = pos; wrap();
+    } else pos = sc.scrollLeft;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(() => { sc.scrollLeft = 1; pos = 1; requestAnimationFrame(tick); });
+})();
 </script>
 <script data-8b-part="scene:contact">
 queueMotion(() => {
