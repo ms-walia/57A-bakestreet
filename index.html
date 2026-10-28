@@ -1256,8 +1256,11 @@ html.is-phone #zones { overflow: clip; }
   #carte .ca-body { grid-template-columns: 1fr; row-gap: 20px; }
   /* pinned like the laptop version: the photo stays in view and keeps swapping
      (cookies -> cakes -> fudge -> hampers) as you scroll through the list below it,
-     instead of scrolling away after the first category. */
-  #carte .ca-aside { position: sticky; top: 72px; z-index: 2; padding-bottom: 14px; background: var(--color-1); }
+     instead of scrolling away after the first category. Pinned at the very top (not
+     just below the nav bar) so its own solid background covers that strip too — the
+     nav auto-hides on scroll down, and without this the list text would peek through
+     the gap that opens up above the photo once the nav slides away. */
+  #carte .ca-aside { position: sticky; top: 0; z-index: 2; padding: 76px 0 14px; background: var(--color-1); }
   #carte .ca-photo { max-width: none; aspect-ratio: 16 / 9; box-shadow: 0 16px 30px color-mix(in srgb, var(--color-4) 55%, transparent); }
 }
 }
@@ -2337,6 +2340,7 @@ queueMotion(() => {
   // near the top of the viewport, and stays active until the next heading crosses that
   // same line, so the photo holds steady for as long as that course's text is on screen.
   const section = document.getElementById('carte');
+  const aside = section.querySelector('.ca-aside');
   const photos = [...section.querySelectorAll('.ca-photo-img')];
   const courses = [...section.querySelectorAll('.ca-course')];
   if (!photos.length || !courses.length) return;
@@ -2346,11 +2350,14 @@ queueMotion(() => {
     active = course;
     photos.forEach(img => img.classList.toggle('is-active', img.dataset.course === course));
   };
-  const LINE = .38; // fraction down the viewport that counts as the trigger line
   let ticking = false;
   const update = () => {
     ticking = false;
-    const line = window.innerHeight * LINE;
+    // trigger line = the pinned photo's own bottom edge, not a fixed fraction of the
+    // viewport: a course becomes active right as its heading emerges from under the
+    // photo, not partway through being read, and this stays correct whether the photo
+    // is the small sticky one (laptop) or the full-bleed pinned one (phone).
+    const line = aside.getBoundingClientRect().bottom;
     // the active course is the last one whose heading has already crossed the line;
     // default to the first course until any heading reaches it.
     let current = courses[0].dataset.course;
